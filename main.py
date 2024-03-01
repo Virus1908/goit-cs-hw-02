@@ -1,35 +1,83 @@
-from collections import defaultdict
-from datetime import datetime
-
-_day_names = {
-    0: 'Monday',
-    1: 'Tuesday',
-    2: 'Wednesday',
-    3: 'Thursday',
-    4: 'Friday',
-}
+from collections import UserDict
 
 
-def get_birthdays_per_week(users):
-    result = defaultdict(list)
-    today = datetime.today().date()
-    for user in users:
-        name = user["name"]
-        birthday = user["birthday"].date()
-        birthday_this_year = birthday.replace(year=today.year)
-        if birthday_this_year < today:
-            birthday_this_year = birthday.replace(year=today.year + 1)
-        delta_days = (birthday_this_year - today).days
-        if delta_days >= 7:
-            continue
-        weekday = birthday_this_year.weekday()
-        if weekday >= 5:
-            weekday = 0
-        result[weekday].append(name)
-    for weekday in range(5):
-        if len(result[weekday]) == 0:
-            continue
-        print(_day_names[weekday] + ": " + ", ".join(result[weekday]))
+class Field:
+    def __init__(self, value, is_mandatory):
+        self.value = value
+        self.is_mandatory = is_mandatory
+
+    def __str__(self):
+        return str(self.value)
+
+
+class Name(Field):
+    def __init__(self, value):
+        super().__init__(value, True)
+
+
+class Phone(Field):
+    def __init__(self, value):
+        length = 0
+        for char in value:
+            if char.isdigit():
+                length += 1
+            else:
+                raise ValueError
+        if length != 10:
+            raise ValueError
+        super().__init__(value, False)
+
+
+class Record:
+    def __init__(self, name):
+        self.name = Name(name)
+        self.phones = []
+
+    def add_phone(self, phone):
+        self.phones.append(Phone(phone))
+
+    def find_phone(self, phone):
+        for stored_phone in self.phones:
+            if stored_phone.value == phone:
+                return stored_phone
+        raise KeyError
+
+    def remove_phone(self, phone):
+        stored_phone = self.find_phone(phone)
+        self.phones.remove(stored_phone)
+
+    def edit_phone(self, prev_phone, new_phone):
+        self.remove_phone(prev_phone)
+        self.add_phone(new_phone)
+
+    def __str__(self):
+        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
+
+
+class AddressBook(UserDict):
+
+    def add_record(self, record):
+        self.data[record.name.value] = record
+
+    def find(self, name):
+        return self.data[name]
+
+    def delete(self, name):
+        self.data.pop(name)
+
+
+def input_error(func):
+    def inner(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except ValueError:
+            return "Give me name and phone please."
+        except KeyError:
+            return "Name or phone is not found"
+        except IndexError:
+            return "Please add more arguments"
+
+    return inner
 
 
 def parse_input(user_input):
@@ -38,28 +86,25 @@ def parse_input(user_input):
     return cmd, *args
 
 
+@input_error
 def add_contact(args, contacts):
     name, phone = args
     contacts[name] = phone
     return "Contact added."
 
 
+@input_error
 def change_contact(args, contacts):
     name, phone = args
-    stored_phone = contacts.get(name)
-    if stored_phone is None:
-        return f"Cannot find contact for {name}"
     contacts[name] = phone
     return "Contact updated."
 
 
+@input_error
 def show_phone(args, contacts):
     name = args[0]
-    phone = contacts.get(name)
-    if phone is None:
-        return f"Cannot find contact for {name}"
-    else:
-        return phone
+    phone = contacts[name]
+    return phone
 
 
 def show_all(contacts):

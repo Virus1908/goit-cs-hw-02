@@ -40,8 +40,11 @@ class Phone(Field):
 
 class Birthday(Field):
     def __init__(self, value):
-        parsed_date = datetime.strptime(value, '%d.%m.%Y').date()
-        super().__init__(parsed_date, False)
+        try:
+            datetime.strptime(value, '%d.%m.%Y')
+        except ValueError:
+            raise ValueError("Incorrect date format, should be YYYY-MM-DD")
+        super().__init__(value, False)
 
 
 class Record:
@@ -138,10 +141,20 @@ def show_phone(args, book: AddressBook):
 
 @input_error
 def add_birthday(args, book: AddressBook):
-    name, birthday = args
-    record = book.find(name)
-    record.add_birthday(birthday)
-    return "Birthday added."
+    if len(args) < 2:
+        return "Please provide both - username and birthday (in DD.MM.YYYY format)."
+    username, birthday_str = args
+    try:
+        datetime.strptime(birthday_str, "%d.%m.%Y").date()
+    except ValueError:
+        return "Invalid date format. Please use DD.MM.YYYY."
+
+    if username in book:
+        contact = book[username]
+        contact.add_birthday(birthday_str)
+        return f"Birthday added for {username}."
+    else:
+        return f"Contact {username} does not exist."
 
 
 @input_error
@@ -158,9 +171,10 @@ def birthdays(book: AddressBook):
         birthday = record.birthday
         if birthday is None:
             continue
-        birthday_this_year = birthday.value.replace(year=today.year)
+        birthday_date = datetime.strptime(birthday.value, "%d.%m.%Y").date()
+        birthday_this_year = birthday_date.replace(year=today.year)
         if birthday_this_year < today:
-            birthday_this_year = birthday.value.replace(year=today.year + 1)
+            birthday_this_year = birthday_date.replace(year=today.year + 1)
         delta_days = (birthday_this_year - today).days
         if delta_days >= 7:
             continue

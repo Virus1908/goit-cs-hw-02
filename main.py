@@ -1,57 +1,86 @@
-from queue import Queue
-from collections import deque
-
-queue = Queue()
-# to simulate application number
-count = 0
+import sys
+from pathlib import Path
+import shutil
+import turtle
 
 
-def generate_request():
-    # used global since goal is to show usage of queue and not keep code clean
-    global count
-    count += 1
-    new_application = f'#{count}'
-    queue.put(new_application)
+def visit_folder(source: Path, dest: Path) -> None:
+    if source.is_dir():
+        for child in source.iterdir():
+            visit_folder(child, dest)
+    elif source.is_file():
+        do_copy(source, dest)
 
 
-def process_request():
-    if not queue.empty():
-        application = queue.get()
-        print(application)
+def do_copy(file: Path, dest: Path):
+    try:
+        suffix = file.suffix[1:]
+        if suffix == "":
+            suffix = "no extension"
+        file_dest = Path(dest.name + "/" + suffix)
+        file_dest.mkdir(parents=True)
+        shutil.copy(file, file_dest)
+    except EnvironmentError:
+        print(f"cannot copy {file.name}")
+
+
+def main_1():
+    args = sys.argv[1:]
+    if len(args) == 0:
+        print("Please add source path")
+        return
+    source_path = args[0]
+    dest_path = "dest" if len(args) < 2 else args[1]
+    source = Path(source_path)
+    if not source.exists() and not source.is_dir():
+        print("Please enter valid source path")
+        return
+    dest = Path(dest_path)
+    if dest.exists() and not dest.is_dir():
+        print("Please enter valid dest path")
+        return
+    if dest.exists():
+        shutil.rmtree(dest)
+    visit_folder(source, dest)
+
+
+def koch_curve(t, order, size):
+    if order == 0:
+        t.forward(size)
     else:
-        print("Queue is empty")
+        for angle in [60, -120, 60, 0]:
+            koch_curve(t, order - 1, size / 3)
+            t.left(angle)
 
 
-def is_palindrome(word: str):
-    if len(word.replace(' ', '')) <= 1:
-        return True
-    palindrome_deque = deque(word)
-    left = palindrome_deque.popleft()
-    right = palindrome_deque.pop()
-    if left.lower() != right.lower():
-        return False
-    while len(palindrome_deque) > 1:
-        if left == " ":
-            left = palindrome_deque.popleft()
-            continue
-        if right == " ":
-            right = palindrome_deque.popleft()
-            continue
-        left = palindrome_deque.popleft()
-        right = palindrome_deque.pop()
-        if left.lower() != right.lower():
-            return False
-
-    return True
+def draw_koch_curve(t, order, size):
+    koch_curve(t, order, size)
 
 
-def main():
-    command = ""
-    while command != "exit":
-        generate_request()
-        process_request()
-        command = input()
+def draw_koch_snowflake(order, size=300):
+    window = turtle.Screen()
+    window.bgcolor("white")
+
+    t = turtle.Turtle()
+    t.speed(0)
+    t.penup()
+    t.goto(-size / 2, 0)
+    t.pendown()
+
+    draw_koch_curve(t, order, size)
+    t.right(120)
+    draw_koch_curve(t, order, size)
+    t.right(120)
+    draw_koch_curve(t, order, size)
+
+    window.mainloop()
+
+
+def main_2():
+    draw_koch_snowflake(4)
 
 
 if __name__ == '__main__':
-    main()
+    pass
+    # main_1()
+    # main_2()

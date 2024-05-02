@@ -18,7 +18,7 @@ def do_copy(file: Path, dest: Path):
         if suffix == "":
             suffix = "no extension"
         file_dest = Path(dest.name + "/" + suffix)
-        file_dest.mkdir(parents=True)
+        file_dest.mkdir(parents=True, exist_ok=True)
         shutil.copy(file, file_dest)
     except EnvironmentError:
         print(f"cannot copy {file.name}")
@@ -57,7 +57,7 @@ def draw_koch_curve(t, order, size):
     koch_curve(t, order, size)
 
 
-def draw_koch_snowflake(order, size=300):
+def draw_koch_snowflake(order: int, size=300):
     window = turtle.Screen()
     window.bgcolor("white")
 
@@ -77,10 +77,14 @@ def draw_koch_snowflake(order, size=300):
 
 
 def main_2():
-    draw_koch_snowflake(4)
+    try:
+        order = int(sys.argv[1])
+        draw_koch_snowflake(order)
+    except ValueError:
+        print("Please enter correct order")
 
 
 if __name__ == '__main__':
-    pass
+    # pass
     # main_1()
-    # main_2()
+    main_2()

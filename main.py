@@ -54,15 +54,15 @@ test1_data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
 
 
 def test1_merge():
-    merge_sort(test1_data)
+    merge_sort(test1_data[:])
 
 
 def test1_insertion():
-    insertion_sort(test1_data)
+    insertion_sort(test1_data[:])
 
 
 def test1_tim():
-    sorted(test1_data)
+    sorted(test1_data[:])
 
 
 test2_data = [100, 99, 98, 97, 96, 95, 94, 93, 92, 91, 90, 89, 88, 87, 86, 85, 84, 83, 82, 81, 80, 79, 78, 77, 76, 75,
@@ -72,15 +72,15 @@ test2_data = [100, 99, 98, 97, 96, 95, 94, 93, 92, 91, 90, 89, 88, 87, 86, 85, 8
 
 
 def test2_merge():
-    merge_sort(test2_data)
+    merge_sort(test2_data[:])
 
 
 def test2_insertion():
-    insertion_sort(test2_data)
+    insertion_sort(test2_data[:])
 
 
 def test2_tim():
-    sorted(test2_data)
+    sorted(test2_data[:])
 
 
 test3_data = [78, 55, 99, 48, 54, 31, 49, 16, 89, 90, 87, 44, 2, 9, 97, 60, 94, 41, 18, 27, 74, 32, 65, 23, 76, 98, 84,
@@ -90,15 +90,15 @@ test3_data = [78, 55, 99, 48, 54, 31, 49, 16, 89, 90, 87, 44, 2, 9, 97, 60, 94, 
 
 
 def test3_merge():
-    merge_sort(test3_data)
+    merge_sort(test3_data[:])
 
 
 def test3_insertion():
-    insertion_sort(test3_data)
+    insertion_sort(test3_data[:])
 
 
 def test3_tim():
-    sorted(test3_data)
+    sorted(test3_data[:])
 
 
 test4_data = [367, 525, 175, 736, 371, 1, 528, 552, 607, 39, 278, 951, 549, 667, 891, 287, 4, 490, 960, 254, 70, 483,
@@ -151,22 +151,22 @@ test4_data = [367, 525, 175, 736, 371, 1, 528, 552, 607, 39, 278, 951, 549, 667,
 
 
 def test4_merge():
-    merge_sort(test4_data)
+    merge_sort(test4_data[:])
 
 
 def test4_insertion():
-    insertion_sort(test4_data)
+    insertion_sort(test4_data[:])
 
 
 def test4_tim():
-    sorted(test4_data)
+    sorted(test4_data[:])
 
 
 def do_test(name: str):
     print(f"Test for {name}")
     for sort_type in ["merge", "insertion", "tim"]:
         timeit_report = timeit.timeit(f"{name}_{sort_type}()",
-                                      number=10000,
+                                      number=1000,
                                       setup=f"from __main__ import {name}_{sort_type}"
                                       )
         print('\ttype:{:<10s} result:{:.4f}'.format(sort_type, timeit_report))

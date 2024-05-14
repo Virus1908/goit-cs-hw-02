@@ -1,102 +1,60 @@
-import matplotlib.pyplot as plt
-import networkx as nx
-
-from collections import deque
+import heapq
 
 
-def bfs_iterative(graph, start):
-    # Ініціалізація порожньої множини для зберігання відвіданих вершин
-    visited = set()
-    # Ініціалізація черги з початковою вершиною
-    queue = deque([start])
+class PriorityQueue:
+    def __init__(self):
+        self.queue = []
 
-    while queue:  # Поки черга не порожня, продовжуємо обхід
-        # Вилучаємо першу вершину з черги
-        vertex = queue.popleft()
-        # Перевіряємо, чи була вершина відвідана раніше
-        if vertex not in visited:
-            # Якщо не була відвідана, друкуємо її
-            print(vertex, end=" ")
-            # Додаємо вершину до множини відвіданих вершин
-            visited.add(vertex)
-            # Додаємо всіх невідвіданих сусідів вершини до кінця черги
-            # Операція різниці множин вилучає вже відвідані вершини зі списку сусідів
-            queue.extend(set(graph[vertex].keys()) - visited)
-    # Повертаємо множину відвіданих вершин після завершення обходу
-    return visited
+    def enqueue(self, task, priority):
+        heapq.heappush(self.queue, (-priority, task))
+
+    def dequeue(self):
+        return heapq.heappop(self.queue)[1]
+
+    def is_empty(self):
+        return not bool(self.queue)
 
 
-def dfs_iterative(graph, start_vertex):
-    visited = set()
-    stack = [start_vertex]
-    while stack:
-        # Вилучаємо вершину зі стеку
-        vertex = stack.pop()
-        if vertex not in visited:
-            print(vertex, end=' ')
-            # Відвідуємо вершину
-            visited.add(vertex)
-            # Додаємо сусідні вершини до стеку
-            stack.extend(reversed(list(graph[vertex].keys())))
+class Cable:
+    def __init__(self, size: int, name: str):
+        self.size = size
+        self.name = name
 
+    def _compare(self, other, method):
+        try:
+            return method(self.size, other.size)
+        except (AttributeError, TypeError):
+            return NotImplemented
 
-def dijkstra(graph, start):
-    # Ініціалізація відстаней та множини невідвіданих вершин
-    distances = {vertex: float('infinity') for vertex in graph}
-    distances[start] = 0
-    unvisited = list(graph.nodes())
+    def __lt__(self, other):
+        return self._compare(other, lambda s, o: s < o)
 
-    while unvisited:
-        # Знаходження вершини з найменшою відстанню серед невідвіданих
-        current_vertex = min(unvisited, key=lambda vertex: distances[vertex])
+    def __le__(self, other):
+        return self._compare(other, lambda s, o: s <= o)
 
-        # Якщо поточна відстань є нескінченністю, то ми завершили роботу
-        if distances[current_vertex] == float('infinity'):
-            break
+    def __eq__(self, other):
+        return self._compare(other, lambda s, o: s == o)
 
-        for neighbor in graph[current_vertex].keys():
-            # даний граф не зважений, тому вага завжди одиниця
-            weight = 1
-            distance = distances[current_vertex] + weight
+    def __ge__(self, other):
+        return self._compare(other, lambda s, o: s >= o)
 
-            # Якщо нова відстань коротша, то оновлюємо найкоротший шлях
-            if distance < distances[neighbor]:
-                distances[neighbor] = distance
+    def __gt__(self, other):
+        return self._compare(other, lambda s, o: s > o)
 
-        # Видаляємо поточну вершину з множини невідвіданих
-        unvisited.remove(current_vertex)
-
-    return distances
+    def __ne__(self, other):
+        return self._compare(other, lambda s, o: s != o)
 
 
 def main():
-    # за приклад беремо готовий граф соціальної мережі
-    # noinspection PyPep8Naming
-    G = nx.krackhardt_kite_graph()
-    print("dfs")
-    dfs_iterative(G, 1)
-    print("\nbfs")
-    bfs_iterative(G, 1)
-    print("")
-    for node in G.nodes():
-        print(f"{node} - {dijkstra(G, node)}")
-    num_nodes = G.number_of_nodes()
-    num_edges = G.number_of_edges()
-    is_connected = nx.is_connected(G)
-    print(num_nodes)
-    print(num_edges)
-    print(is_connected)
-    print("Betweenness")
-    b = nx.betweenness_centrality(G)
-    print(b)
-    print("Degree centrality")
-    d = nx.degree_centrality(G)
-    print(d)
-    print("Closeness centrality")
-    c = nx.closeness_centrality(G)
-    print(c)
-    nx.draw(G, with_labels=True)
-    plt.show()
+    cable_list = list(map(lambda x: Cable(x, str(x)), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
+    heapq.heapify(cable_list)
+    while len(cable_list) > 2:
+        cable1 = heapq.heappop(cable_list)
+        cable2 = heapq.heappop(cable_list)
+        print(f"Connecting {cable1.name} and {cable2.name}")
+        new_cable = Cable(cable1.size + cable2.size, f"({cable1.name}x{cable2.name})")
+        heapq.heappush(cable_list, new_cable)
+    print(f"Result = {cable_list[0].name}x{cable_list[1].name}")
 
 
 if __name__ == '__main__':

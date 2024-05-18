@@ -1,60 +1,58 @@
-import heapq
+import timeit
+
+# оскільки масив містить елемент "1", любе цілоцисельне ріщення буде можливе
+# також масив одразу відсортований
+available_coins = [50, 25, 10, 5, 2, 1]
 
 
-class PriorityQueue:
-    def __init__(self):
-        self.queue = []
+def find_coins_greedy(coins_sum: int):
+    result = {}
+    sum_left = coins_sum
+    for available_coin in available_coins:
+        coins_picked = 0
+        while sum_left >= available_coin:
+            coins_picked += 1
+            sum_left -= available_coin
+        if coins_picked > 0:
+            result[available_coin] = coins_picked
 
-    def enqueue(self, task, priority):
-        heapq.heappush(self.queue, (-priority, task))
-
-    def dequeue(self):
-        return heapq.heappop(self.queue)[1]
-
-    def is_empty(self):
-        return not bool(self.queue)
+    return result
 
 
-class Cable:
-    def __init__(self, size: int, name: str):
-        self.size = size
-        self.name = name
+def find_min_coins(coins_sum: int):
+    best_results = [{-1: 0 if i == 0 else -1} for i in range(coins_sum + 1)]
 
-    def _compare(self, other, method):
-        try:
-            return method(self.size, other.size)
-        except (AttributeError, TypeError):
-            return NotImplemented
+    for ongoing_sum in range(coins_sum + 1):
+        for available_coin in available_coins:
+            if available_coin <= ongoing_sum:
+                prev_step_best = best_results[ongoing_sum - available_coin][-1]
+                current_best = best_results[ongoing_sum][-1]
+                if current_best == -1 or prev_step_best + 1 < current_best:
+                    new_best = best_results[ongoing_sum - available_coin].copy()
+                    new_best[-1] = prev_step_best + 1
+                    new_best[available_coin] = new_best[available_coin] + 1 if available_coin in new_best.keys() else 1
+                    best_results[ongoing_sum] = new_best
 
-    def __lt__(self, other):
-        return self._compare(other, lambda s, o: s < o)
+    result = best_results[coins_sum]
+    result.pop(-1)
+    return result
 
-    def __le__(self, other):
-        return self._compare(other, lambda s, o: s <= o)
 
-    def __eq__(self, other):
-        return self._compare(other, lambda s, o: s == o)
-
-    def __ge__(self, other):
-        return self._compare(other, lambda s, o: s >= o)
-
-    def __gt__(self, other):
-        return self._compare(other, lambda s, o: s > o)
-
-    def __ne__(self, other):
-        return self._compare(other, lambda s, o: s != o)
+def do_test(name: str, count: int):
+    timeit_report = timeit.timeit(f"{name}({count})",
+                                  number=1000,
+                                  setup=f"from __main__ import {name}"
+                                  )
+    print('name:{:<20s} count:{:5d} result:{:.4f}'.format(name, count, timeit_report))
 
 
 def main():
-    cable_list = list(map(lambda x: Cable(x, str(x)), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
-    heapq.heapify(cable_list)
-    while len(cable_list) > 2:
-        cable1 = heapq.heappop(cable_list)
-        cable2 = heapq.heappop(cable_list)
-        print(f"Connecting {cable1.name} and {cable2.name}")
-        new_cable = Cable(cable1.size + cable2.size, f"({cable1.name}x{cable2.name})")
-        heapq.heappush(cable_list, new_cable)
-    print(f"Result = {cable_list[0].name}x{cable_list[1].name}")
+    do_test("find_coins_greedy", 113)
+    do_test("find_min_coins", 113)
+    do_test("find_coins_greedy", 1131)
+    do_test("find_min_coins", 1131)
+    do_test("find_coins_greedy", 11312)
+    do_test("find_min_coins", 11312)
 
 
 if __name__ == '__main__':

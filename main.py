@@ -1,58 +1,82 @@
-import timeit
+import random
 
-# оскільки масив містить елемент "1", любе цілоцисельне ріщення буде можливе
-# також масив одразу відсортований
-available_coins = [50, 25, 10, 5, 2, 1]
-
-
-def find_coins_greedy(coins_sum: int):
-    result = {}
-    sum_left = coins_sum
-    for available_coin in available_coins:
-        coins_picked = 0
-        while sum_left >= available_coin:
-            coins_picked += 1
-            sum_left -= available_coin
-        if coins_picked > 0:
-            result[available_coin] = coins_picked
-
-    return result
+import scipy.integrate as spi
+from pulp import *
 
 
-def find_min_coins(coins_sum: int):
-    best_results = [{-1: 0 if i == 0 else -1} for i in range(coins_sum + 1)]
+def solve_pl():
+    model = pulp.LpProblem("Drink_Company", LpMaximize)
+    lemonade = pulp.LpVariable('lemonade', lowBound=0)
+    juice = pulp.LpVariable('juice', lowBound=0)
+    water = pulp.LpVariable('water', lowBound=0, upBound=100)
+    sugar = pulp.LpVariable('sugar', lowBound=0, upBound=50)
+    lemon_juice = pulp.LpVariable('lemon_juice', lowBound=0, upBound=30)
+    sauce = pulp.LpVariable('sauce', lowBound=0, upBound=40)
+    model += lemonade + juice, "Problem"
 
-    for ongoing_sum in range(coins_sum + 1):
-        for available_coin in available_coins:
-            if available_coin <= ongoing_sum:
-                prev_step_best = best_results[ongoing_sum - available_coin][-1]
-                current_best = best_results[ongoing_sum][-1]
-                if current_best == -1 or prev_step_best + 1 < current_best:
-                    new_best = best_results[ongoing_sum - available_coin].copy()
-                    new_best[-1] = prev_step_best + 1
-                    new_best[available_coin] = new_best[available_coin] + 1 if available_coin in new_best.keys() else 1
-                    best_results[ongoing_sum] = new_best
+    model += 2 * lemonade + juice <= water, "water_constraint"
+    model += lemonade <= sugar, "sugar_constraint"
+    model += lemonade <= lemon_juice, "lemon_juice_constraint"
+    model += 2 * juice <= sauce, "sauce_constraint"
 
-    result = best_results[coins_sum]
-    result.pop(-1)
-    return result
+    model.solve()
+    lemonade_value = lemonade.name + "=" + str(lemonade.varValue)
+    juice_value = juice.name + "=" + str(juice.varValue)
+    return lemonade_value + "\n" + juice_value
 
 
-def do_test(name: str, count: int):
-    timeit_report = timeit.timeit(f"{name}({count})",
-                                  number=1000,
-                                  setup=f"from __main__ import {name}"
-                                  )
-    print('name:{:<20s} count:{:5d} result:{:.4f}'.format(name, count, timeit_report))
+# noinspection PyShadowingNames
+def f(x):
+    return x ** 2
+
+
+def solve_quad(func, a, b):
+    return spi.quad(func, a, b)[0]
+
+
+def monte_carlo(func, a, b, num_experiments, count, lower_bound=0, upper_bound=10):
+    average_area = 0
+    need_to_change_upper_bound = False
+    need_to_change_lower_bound = False
+    for _ in range(num_experiments):
+        points = [(random.uniform(a, b), random.uniform(lower_bound, upper_bound)) for _ in range(count)]
+        inside_points = 0
+        for point in points:
+            if func(point[0]) < lower_bound:
+                need_to_change_lower_bound = True
+            elif func(point[0]) > upper_bound:
+                need_to_change_upper_bound = True
+            elif point[1] < func(point[0]):
+                inside_points += 1
+
+        if need_to_change_upper_bound or need_to_change_lower_bound:
+            break
+
+        area = (inside_points / len(points)) * ((b - a) * (upper_bound - lower_bound))
+
+        average_area += area
+
+    if need_to_change_lower_bound:
+        return monte_carlo(func, a, b, num_experiments, count, lower_bound - 10, upper_bound)
+    if need_to_change_upper_bound:
+        return monte_carlo(func, a, b, num_experiments, count, lower_bound, upper_bound + 10)
+
+    average_area /= num_experiments
+    return average_area
 
 
 def main():
-    do_test("find_coins_greedy", 113)
-    do_test("find_min_coins", 113)
-    do_test("find_coins_greedy", 1131)
-    do_test("find_min_coins", 1131)
-    do_test("find_coins_greedy", 11312)
-    do_test("find_min_coins", 11312)
+    # print(solve_pl())
+    a = 0
+    b = 20
+    print(monte_carlo(f, a, b, 100, 10))
+    print(monte_carlo(f, a, b, 100, 100))
+    print(monte_carlo(f, a, b, 100, 1000))
+    print(monte_carlo(f, a, b, 100, 10000))
+    print(monte_carlo(f, a, b, 10, 10000))
+    print(monte_carlo(f, a, b, 1, 10000))
+    print(monte_carlo(f, a, b, 1, 10))
+    print(solve_quad(f, a, b))
 
 
 if __name__ == '__main__':

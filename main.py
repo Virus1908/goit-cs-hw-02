@@ -1,128 +1,97 @@
-from pymongo import MongoClient
-from pymongo.server_api import ServerApi
+from threading import Thread
+from multiprocessing import Process, Manager
+import time
+
+all_words = ["own", "she", "Attended", "fake"]
+all_files = [
+    "files/1.txt",
+    "files/2.txt",
+    "files/3.txt",
+    "files/4.txt",
+    "files/5.txt",
+    "files/6.txt",
+    "files/7.txt",
+    "files/8.txt",
+    "files/9.txt"
+]
+
+num_treads = 3
+num_processes = 3
 
 
-def db_error(func):
-    """
-    intercepts all exception, can be used as decorator
-    """
-
-    def inner(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            return f"Sorry, an exception occurred :: {e}"
-
-    return inner
-
-
-def parse_input(user_input):
-    cmd, *args = user_input.split()
-    cmd = cmd.strip().lower()
-    return cmd, *args
+def lookup(path: str, words: list) -> list:
+    try:
+        found = []
+        with open(path) as f:
+            file_data = f.read()
+            for word in words:
+                if word in file_data:
+                    found.append(word)
+        return found
+    except OSError:
+        return []
 
 
-@db_error
-def read(args, db):
-    """
-    :param args: provide zero agrs to show all cats, one arg to show cat by name
-    :param db: link to db
-    :return: result in user-friendly manner
-    """
-    cats = []
-    if len(args) == 0:
-        result = db.cats.find({})
-        for el in result:
-            cats.append(el)
-    elif len(args) == 1:
-        result = db.cats.find({"name": args[0]})
-        for el in result:
-            cats.append(el)
-    else:
-        return "wrong read command args"
-    return cats
+def thread_job(files: list, words: list, result: dict):
+    for file in files:
+        found = lookup(file, words)
+        for word in found:
+            if word in result:
+                result[word].append(file)
+            else:
+                result[word] = [file]
 
 
-@db_error
-def update_age(args, db):
-    """
-    :param args: first arg is cat's name, second is new age that will be parsed to int
-    :param db: link to db
-    :return: user-friendly massage
-    """
-    if len(args) == 2:
-        name = args[0]
-        try:
-            age = int(args[1])
-        except ValueError:
-            return "wrong update_age command args"
-        r = db.cats.update_one({"name": name}, {"$set": {"age": age}})
-        return "Success" if r.matched_count == 1 else "Cat not found"
-    else:
-        return "wrong update_age command args"
+def main_thread():
+    result = {}
+    threads = []
+    files_per_thread = [all_files[i:i + num_treads] for i in range(0, len(all_files), num_processes)]
+
+    start = time.time()
+    for i in range(num_treads):
+        thread = Thread(target=thread_job, args=(files_per_thread[i], all_words, result))
+        thread.start()
+        threads.append(thread)
+
+    [el.join() for el in threads]
+    end = time.time()
+    print(result)
+    print(f"calculation time-{end - start}")
 
 
-@db_error
-def add_feature(args, db):
-    """
-    :param args: first arg is cat's name, rest will be joined to the feature string
-    :param db: link to db
-    :return: user-friendly massage
-    """
-    if len(args) >= 2:
-        name = args[0]
-        feature = " ".join(args[1:])
-        r = db.cats.update_one({"name": name}, {"$push": {"features": feature}})
-        return "Success" if r.matched_count == 1 else "Cat not found"
-    else:
-        return "wrong add_feature command args"
+def process_job(files: list, words: list, val: Manager):
+    for file in files:
+        found = lookup(file, words)
+        val[file] = found
 
 
-@db_error
-def delete(args, db):
-    """
-    :param args: provide zero agrs to delete all docs, one arg to delete cat by name
-    :param db: link to db
-    :return: result in user-friendly manner
-    """
-    if len(args) == 0:
-        db.cats.delete_many({})
-        return "Success"
-    elif len(args) == 1:
-        result = db.cats.delete_one({"name": args[0]})
-        return "Success" if result.deleted_count == 1 else "Cat not found"
-    else:
-        return "wrong delete command args"
+def main_process():
+    files_per_process = [all_files[i:i + num_treads] for i in range(0, len(all_files), num_treads)]
+    processes = []
 
+    with Manager() as manager:
+        result_per_file = manager.dict()
+        start = time.time()
+        for i in range(num_treads):
+            process = Process(target=process_job, args=(files_per_process[i], all_words, result_per_file))
+            process.start()
+            processes.append(process)
 
-def main():
-    client = MongoClient(
-        "mongodb+srv://goithw3:QzXdg1wRDs6rS6Pa@hw3.99d0ci6.mongodb.net/?retryWrites=true&w=majority&appName=hw3",
-        server_api=ServerApi('1')
-    )
+        [pr.join() for pr in processes]
+        end = time.time()
+        result_per_word = {}
+        for file in result_per_file:
+            found = result_per_file[file]
+            for word in found:
+                if word in result_per_word:
+                    result_per_word[word].append(file)
+                else:
+                    result_per_word[word] = [file]
 
-    db = client.cats
-
-    while True:
-        user_input = input("Enter a command: ")
-        command, *args = parse_input(user_input)
-
-        if command in ["close", "exit"]:
-            print("Good bye!")
-            break
-
-        elif command == "read":
-            print(read(args, db))
-
-        elif command == "update_age":
-            print(update_age(args, db))
-
-        elif command == "add_feature":
-            print(add_feature(args, db))
-
-        elif command == "delete":
-            print(delete(args, db))
+        print(result_per_word)
+        print(f"calculation time-{end - start}")
 
 
 if __name__ == "__main__":
-    main()
+    main_thread()
+    main_process()
